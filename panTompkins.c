@@ -153,8 +153,8 @@
 #define WINDOWSIZE 20   // Integrator window size, in samples. The article recommends 150ms. So, FS*0.15.
 						// However, you should check empirically if the waveform looks ok.
 #define NOSAMPLE -32000 // An indicator that there are no more samples to read. Use an impossible value for a sample.
-#define FS 360          // Sampling frequency.
-#define BUFFSIZE 600    // The size of the buffers (in samples). Must fit more than 1.66 times an RR interval, which
+#define FS 250          // Sampling frequency.
+#define BUFFSIZE 512    // The size of the buffers (in samples). Must fit more than 1.66 times an RR interval, which
                         // typically could be around 1 second.
 
 #define DELAY 22		// Delay introduced by the filters. Filter only output samples after this one.
@@ -184,13 +184,24 @@ void init(const char file_in[], const char file_out[])
     A/D converter etc) and put it in a suitable, numeric format. Return the
     sample, or NOSAMPLE if there are no more samples.
 */
-dataType input()
-{
-	int num = NOSAMPLE;
-	if (!feof(fin))
-		fscanf(fin, "%d", &num);
+dataType input() {
+  short sample[1] = {0};
 
-	return num;
+  size_t items_read = fread(sample, sizeof(short), 1, fin);
+
+  if (items_read != 1) {
+    // Could be an error or end-of-file
+    if (feof(fin)) {
+      // End of fin reached
+      return NOSAMPLE;
+    } else if (ferror(fin)) {
+      // An error occurred
+      perror("Error reading the file");
+      return NOSAMPLE;
+    }
+  }
+
+  return *sample;
 }
 
 /*

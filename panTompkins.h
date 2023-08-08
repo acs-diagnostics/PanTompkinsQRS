@@ -34,9 +34,22 @@
 #define PAN_TOMPKINS
 
 typedef int dataType;
-typedef enum {false, true} bool;
 
+#ifndef __cplusplus
+typedef enum {
+  false,
+  true
+} bool;
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 void panTompkins();
-void init(char file_in[], char file_out[]);
+void init(const char file_in[], const char file_out[]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
