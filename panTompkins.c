@@ -14,8 +14,8 @@
       // RR interval, which typically could be around 1 second.
 
 #define DELAY \
-  22 // Delay introduced by the filters. Filter only output samples after this
-     // one.
+  0 // Delay introduced by the filters. Filter only output samples after this
+    // one.
 // Set to 0 if you want to keep the delay. Fixing the delay results in DELAY
 // less samples in the final end result.
 
@@ -34,7 +34,8 @@ FILE *fin, *fout; // Remove them if not using files and <stdio.h>.
  * @param file_in
  * @param file_out
  */
-void init(const char file_in[], const char file_out[]) {
+void init(const char file_in[], const char file_out[])
+{
   fin = fopen(file_in, "r");
   fout = fopen(file_out, "w+");
 }
@@ -46,7 +47,8 @@ void init(const char file_in[], const char file_out[]) {
  *
  * @return dataType
  */
-dataType input() {
+dataType input()
+{
   short sample[1] = {0};
 
   size_t items_read = fread(sample, sizeof(short), 1, fin);
@@ -76,7 +78,8 @@ dataType input() {
  *
  * @param out
  */
-void output(int out) {
+void output(int out)
+{
   fprintf(fout, "%d\n", out);
 }
 
@@ -86,15 +89,15 @@ void output(int out) {
  * and averages until there are no more samples. More details both above and in
  * shorter comments below.
  */
-void panTompkins() {
+void panTompkins()
+{
   // The signal array is where the most recent samples are kept. The other
   // arrays are the outputs of each filtering module: DC Block, low pass, high
   // pass, integral etc.
   // The output is a buffer where we can change a previous result (using a back
   // search) before outputting.
-  dataType signal[BUFFSIZE], dcblock[BUFFSIZE], lowpass[BUFFSIZE],
-    highpass[BUFFSIZE], derivative[BUFFSIZE], squared[BUFFSIZE],
-    integral[BUFFSIZE], outputSignal[BUFFSIZE];
+  dataType signal[BUFFSIZE], dcblock[BUFFSIZE], lowpass[BUFFSIZE], highpass[BUFFSIZE], derivative[BUFFSIZE],
+      squared[BUFFSIZE], integral[BUFFSIZE], outputSignal[BUFFSIZE];
 
   // rr1 holds the last 8 RR intervals. rr2 holds the last 8 RR intervals
   // between rrlow and rrhigh. rravg1 is the rr1 average, rr2 is the rravg2.
@@ -112,8 +115,7 @@ void panTompkins() {
   // sample was triggered. currentSlope helps calculate the max. square slope
   // for the present sample. These are all long unsigned int so that very long
   // signals can be read without messing the count.
-  long unsigned int i, j, sample = 0, lastQRS = 0, lastSlope = 0,
-                          currentSlope = 0;
+  long unsigned int i, j, sample = 0, lastQRS = 0, lastSlope = 0, currentSlope = 0;
 
   // This variable is used as an index to work with the signal buffers. If the
   // buffers still aren't completely filled, it shows the last filled position.
@@ -132,9 +134,8 @@ void panTompkins() {
   // ones. They're used for a back search when no peak is detected for too long.
   // The spk and npk variables are, respectively, running estimates of signal
   // and noise peaks.
-  dataType peak_i = 0, peak_f = 0, threshold_i1 = 0, threshold_i2 = 0,
-           threshold_f1 = 0, threshold_f2 = 0, spk_i = 0, spk_f = 0, npk_i = 0,
-           npk_f = 0;
+  dataType peak_i = 0, peak_f = 0, threshold_i1 = 0, threshold_i2 = 0, threshold_f1 = 0, threshold_f2 = 0, spk_i = 0,
+           spk_f = 0, npk_i = 0, npk_f = 0;
 
   // qrs tells whether there was a detection or not.
   // regular tells whether the heart pace is regular or not.
@@ -184,8 +185,7 @@ void panTompkins() {
     // It is not necessary and can be removed if your sensor or database has no
     // DC noise.
     if (current >= 1) {
-      dcblock[current] =
-        signal[current] - signal[current - 1] + 0.995 * dcblock[current - 1];
+      dcblock[current] = signal[current] - signal[current - 1] + 0.995 * dcblock[current - 1];
     } else {
       dcblock[current] = 0;
     }
@@ -258,17 +258,14 @@ void panTompkins() {
 
     // If the current signal is above one of the thresholds (integral or
     // filtered signal), it's a peak candidate.
-    if (
-      integral[current] >= threshold_i1 || highpass[current] >= threshold_f1) {
+    if (integral[current] >= threshold_i1 || highpass[current] >= threshold_f1) {
       peak_i = integral[current];
       peak_f = highpass[current];
     }
 
     // If both the integral and the signal are above their thresholds, they're
     // probably signal peaks.
-    if (
-      (integral[current] >= threshold_i1) &&
-      (highpass[current] >= threshold_f1)) {
+    if ((integral[current] >= threshold_i1) && (highpass[current] >= threshold_f1)) {
       // There's a 200ms latency. If the new peak respects this condition, we
       // can keep testing.
       if (sample > lastQRS + FS / 5) {
@@ -394,12 +391,8 @@ void panTompkins() {
       // do a back search.
       // However, the back search must respect the 200ms limit and the 360ms one
       // (check the slope).
-      if (
-        (sample - lastQRS > (long unsigned int)rrmiss) &&
-        (sample > lastQRS + FS / 5)) {
-        for (i = current - (sample - lastQRS) + FS / 5;
-             i < (long unsigned int)current;
-             i++) {
+      if ((sample - lastQRS > (long unsigned int)rrmiss) && (sample > lastQRS + FS / 5)) {
+        for (i = current - (sample - lastQRS) + FS / 5; i < (long unsigned int)current; i++) {
           if ((integral[i] > threshold_i2) && (highpass[i] > threshold_f2)) {
             currentSlope = 0;
             for (j = i - 10; j <= i; j++) {
@@ -408,9 +401,7 @@ void panTompkins() {
               }
             }
 
-            if (
-              (currentSlope < (dataType)(lastSlope / 2)) &&
-              (i + sample) < lastQRS + 0.36 * lastQRS) {
+            if ((currentSlope < (dataType)(lastSlope / 2)) && (i + sample) < lastQRS + 0.36 * lastQRS) {
               qrs = false;
             } else {
               peak_i = integral[i];
@@ -482,9 +473,7 @@ void panTompkins() {
       if (!qrs) {
         // If some kind of peak had been detected, then it's certainly a noise
         // peak. Thresholds must be updated accordinly.
-        if (
-          (integral[current] >= threshold_i1) ||
-          (highpass[current] >= threshold_f1)) {
+        if ((integral[current] >= threshold_i1) || (highpass[current] >= threshold_f1)) {
           peak_i = integral[current];
           npk_i = 0.125 * peak_i + 0.875 * npk_i;
           threshold_i1 = npk_i + 0.25 * (spk_i - npk_i);

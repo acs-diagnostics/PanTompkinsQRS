@@ -4,10 +4,7 @@
 typedef int dataType;
 
 #ifndef __cplusplus
-typedef enum {
-  false,
-  true
-} bool;
+typedef enum { false, true } bool;
 #endif
 
 #ifdef __cplusplus
