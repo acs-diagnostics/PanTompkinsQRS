@@ -14,7 +14,7 @@
       // RR interval, which typically could be around 1 second.
 
 #define DELAY \
-  0 // Delay introduced by the filters. Filter only output samples after this
+  22 // Delay introduced by the filters. Filter only output samples after this
     // one.
 // Set to 0 if you want to keep the delay. Fixing the delay results in DELAY
 // less samples in the final end result.
