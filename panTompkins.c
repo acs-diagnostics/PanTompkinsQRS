@@ -15,7 +15,7 @@
 
 #define DELAY \
   22 // Delay introduced by the filters. Filter only output samples after this
-    // one.
+     // one.
 // Set to 0 if you want to keep the delay. Fixing the delay results in DELAY
 // less samples in the final end result.
 
@@ -106,7 +106,7 @@ void panTompkins()
   // while rrhigh is the highest. rrmiss is the longest that it would be
   // expected until a new QRS is detected. If none is detected for such a long
   // interval, the thresholds must be adjusted.
-  int rr1[8], rr2[8], rravg1, rravg2, rrlow = 0, rrhigh = 0, rrmiss = 0;
+  int rr1[8], rr2[8], rravg1 = 0, rravg2 = 0, rrlow = 0, rrhigh = 0, rrmiss = 0;
 
   // i and j are iterators for loops.
   // sample counts how many samples have been read so far.
@@ -115,14 +115,14 @@ void panTompkins()
   // sample was triggered. currentSlope helps calculate the max. square slope
   // for the present sample. These are all long unsigned int so that very long
   // signals can be read without messing the count.
-  long unsigned int i, j, sample = 0, lastQRS = 0, lastSlope = 0, currentSlope = 0;
+  int i, j, sample = 0, lastQRS = 0, lastSlope = 0, currentSlope = 0;
 
   // This variable is used as an index to work with the signal buffers. If the
   // buffers still aren't completely filled, it shows the last filled position.
   // Once the buffers are full, it'll always show the last position, and new
   // samples will make the buffers shift, discarding the oldest sample and
   // storing the newest one on the last position.
-  int current;
+  long int current;
 
   // There are the variables from the original Pan-Tompkins algorithm.
   // The ones ending in _i correspond to values from the integrator.
@@ -271,7 +271,7 @@ void panTompkins()
       if (sample > lastQRS + FS / 5) {
         // If it respects the 200ms latency, but it doesn't respect the 360ms
         // latency, we check the slope.
-        if (sample <= lastQRS + (long unsigned int)(0.36 * FS)) {
+        if (sample <= lastQRS + (0.36 * FS)) {
           // The squared slope is "M" shaped. So we have to check nearby samples
           // to make sure we're really looking at its peak value, rather than a
           // low one.
@@ -391,8 +391,8 @@ void panTompkins()
       // do a back search.
       // However, the back search must respect the 200ms limit and the 360ms one
       // (check the slope).
-      if ((sample - lastQRS > (long unsigned int)rrmiss) && (sample > lastQRS + FS / 5)) {
-        for (i = current - (sample - lastQRS) + FS / 5; i < (long unsigned int)current; i++) {
+      if ((sample - lastQRS > rrmiss) && (sample > lastQRS + FS / 5)) {
+        for (i = current - (sample - lastQRS) + FS / 5; i < current; i++) {
           if ((integral[i] > threshold_i2) && (highpass[i] > threshold_f2)) {
             currentSlope = 0;
             for (j = i - 10; j <= i; j++) {
