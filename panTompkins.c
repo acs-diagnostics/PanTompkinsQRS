@@ -101,7 +101,7 @@ void panTompkins()
 
   // rr1 holds the last 8 RR intervals. rr2 holds the last 8 RR intervals
   // between rrlow and rrhigh. rravg1 is the rr1 average, rr2 is the rravg2.
-  // rrlow = 0.92*rravg2, rrhigh = 1.08*rravg2 and rrmiss = 1.16*rravg2. rrlow
+  // rrlow = 0.92*rravg2, rrhigh = 1.16*rravg2 and rrmiss = 1.66*rravg2. rrlow
   // is the lowest RR-interval considered normal for the current heart beat,
   // while rrhigh is the highest. rrmiss is the longest that it would be
   // expected until a new QRS is detected. If none is detected for such a long
