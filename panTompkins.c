@@ -5,17 +5,13 @@
               // 150ms. So, FS*0.15. However, you should check empirically if
               // the waveform looks ok.
 
-#define NOSAMPLE \
-  -32000 // An indicator that there are no more samples to read. Use an
-         // impossible value for a sample.
-
 #define BUFFSIZE \
   512 // The size of the buffers (in samples). Must fit more than 1.66 times an
       // RR interval, which typically could be around 1 second.
 
 #define DELAY \
   0 // Delay introduced by the filters. Filter only output samples after this
-     // one.
+    // one.
 // Set to 0 if you want to keep the delay. Fixing the delay results in DELAY
 // less samples in the final end result.
 
@@ -38,34 +34,6 @@ void init(const char file_in[], const char file_out[])
 {
   fin = fopen(file_in, "r");
   fout = fopen(file_out, "w+");
-}
-
-/**
- * @brief Use this function to read and return the next sample (from file,
- * serial, A/D converter etc) and put it in a suitable, numeric format. Return
- * the sample, or NOSAMPLE if there are no more samples.
- *
- * @return dataType
- */
-dataType input()
-{
-  short sample[1] = {0};
-
-  size_t items_read = fread(sample, sizeof(short), 1, fin);
-
-  if (items_read != 1) {
-    // Could be an error or end-of-file
-    if (feof(fin)) {
-      // End of fin reached
-      return NOSAMPLE;
-    } else if (ferror(fin)) {
-      // An error occurred
-      perror("Error reading the file");
-      return NOSAMPLE;
-    }
-  }
-
-  return *sample;
 }
 
 /**
@@ -96,8 +64,7 @@ void panTompkins()
   // pass, integral etc.
   // The output is a buffer where we can change a previous result (using a back
   // search) before outputting.
-  dataType signal[BUFFSIZE], dcblock[BUFFSIZE], lowpass[BUFFSIZE], highpass[BUFFSIZE], derivative[BUFFSIZE],
-      squared[BUFFSIZE], integral[BUFFSIZE], outputSignal[BUFFSIZE];
+  dataType signal[BUFFSIZE], derivative[BUFFSIZE], squared[BUFFSIZE], integral[BUFFSIZE], outputSignal[BUFFSIZE];
 
   // rr1 holds the last 8 RR intervals. rr2 holds the last 8 RR intervals
   // between rrlow and rrhigh. rravg1 is the rr1 average, rr2 is the rravg2.
@@ -106,7 +73,7 @@ void panTompkins()
   // while rrhigh is the highest. rrmiss is the longest that it would be
   // expected until a new QRS is detected. If none is detected for such a long
   // interval, the thresholds must be adjusted.
-  int rr1[8], rr2[8], rravg1 = 0, rravg2 = 0, rrlow = 0, rrhigh = 0, rrmiss = 0;
+  int rr1[8] = {0}, rr2[8] = {0}, rravg1 = 0, rravg2 = 0, rrlow = 0, rrhigh = 0, rrmiss = 0;
 
   // i and j are iterators for loops.
   // sample counts how many samples have been read so far.
@@ -143,15 +110,15 @@ void panTompkins()
   // RR-interval was calculated.
   bool qrs, regular = true, prevRegular;
 
-  // Initializing the RR averages
-  for (i = 0; i < 8; i++) {
-    rr1[i] = 0;
-    rr2[i] = 0;
-  }
+  short input_buffer[1] = {0};
+
+  int read_result = 0;
+
+  read_result = fread(input_buffer, sizeof(short), 1, fin);
 
   // The main loop where everything proposed in the paper happens. Ends when
   // there are no more signal samples.
-  do {
+  while (read_result == 1) {
     // Test if the buffers are full.
     // If they are, shift them, discarding the oldest sample and adding the new
     // one at the end. Else, just put the newest sample in the next free
@@ -160,9 +127,6 @@ void panTompkins()
     if (sample >= BUFFSIZE) {
       for (i = 0; i < BUFFSIZE - 1; i++) {
         signal[i] = signal[i + 1];
-        dcblock[i] = dcblock[i + 1];
-        lowpass[i] = lowpass[i + 1];
-        highpass[i] = highpass[i + 1];
         derivative[i] = derivative[i + 1];
         squared[i] = squared[i + 1];
         integral[i] = integral[i + 1];
@@ -172,69 +136,19 @@ void panTompkins()
     } else {
       current = sample;
     }
-    signal[current] = input();
 
-    // If no sample was read, stop processing!
-    if (signal[current] == NOSAMPLE) {
-      break;
-    }
+    signal[current] = *input_buffer;
+
     sample++; // Update sample counter
-
-    // // DC Block filter
-    // // This was not proposed on the original paper.
-    // // It is not necessary and can be removed if your sensor or database has no
-    // // DC noise.
-    // if (current >= 1) {
-    //   dcblock[current] = signal[current] - signal[current - 1] + 0.995 * dcblock[current - 1];
-    // } else {
-    //   dcblock[current] = 0;
-    // }
-
-    // // Low Pass filter
-    // // Implemented as proposed by the original paper.
-    // // y(nT) = 2y(nT - T) - y(nT - 2T) + x(nT) - 2x(nT - 6T) + x(nT - 12T)
-    // // Can be removed if your signal was previously filtered, or replaced by a
-    // // different filter.
-    // lowpass[current] = dcblock[current];
-    // if (current >= 1) {
-    //   lowpass[current] += 2 * lowpass[current - 1];
-    // }
-    // if (current >= 2) {
-    //   lowpass[current] -= lowpass[current - 2];
-    // }
-    // if (current >= 6) {
-    //   lowpass[current] -= 2 * dcblock[current - 6];
-    // }
-    // if (current >= 12) {
-    //   lowpass[current] += dcblock[current - 12];
-    // }
-
-    // // High Pass filter
-    // // Implemented as proposed by the original paper.
-    // // y(nT) = 32x(nT - 16T) - [y(nT - T) + x(nT) - x(nT - 32T)]
-    // // Can be removed if your signal was previously filtered, or replaced by a
-    // // different filter.
-    // highpass[current] = -lowpass[current];
-    // if (current >= 1) {
-    //   highpass[current] -= highpass[current - 1];
-    // }
-    // if (current >= 16) {
-    //   highpass[current] += 32 * lowpass[current - 16];
-    // }
-    // if (current >= 32) {
-    //   highpass[current] += lowpass[current - 32];
-    // }
-
-    highpass[current] = signal[current];
 
     // Derivative filter
     // This is an alternative implementation, the central difference method.
     // f'(a) = [f(a+h) - f(a-h)]/2h
     // The original formula used by Pan-Tompkins was:
     // y(nT) = (1/8T)[-x(nT - 2T) - 2x(nT - T) + 2x(nT + T) + x(nT + 2T)]
-    derivative[current] = highpass[current];
+    derivative[current] = signal[current];
     if (current > 0) {
-      derivative[current] -= highpass[current - 1];
+      derivative[current] -= signal[current - 1];
     }
 
     // This just squares the derivative, to get rid of negative values and
@@ -260,14 +174,14 @@ void panTompkins()
 
     // If the current signal is above one of the thresholds (integral or
     // filtered signal), it's a peak candidate.
-    if (integral[current] >= threshold_i1 || highpass[current] >= threshold_f1) {
+    if (integral[current] >= threshold_i1 || signal[current] >= threshold_f1) {
       peak_i = integral[current];
-      peak_f = highpass[current];
+      peak_f = signal[current];
     }
 
     // If both the integral and the signal are above their thresholds, they're
     // probably signal peaks.
-    if ((integral[current] >= threshold_i1) && (highpass[current] >= threshold_f1)) {
+    if ((integral[current] >= threshold_i1) && (signal[current] >= threshold_f1)) {
       // There's a 200ms latency. If the new peak respects this condition, we
       // can keep testing.
       if (sample > lastQRS + FS / 5) {
@@ -328,7 +242,7 @@ void panTompkins()
         npk_i = 0.125 * peak_i + 0.875 * npk_i;
         threshold_i1 = npk_i + 0.25 * (spk_i - npk_i);
         threshold_i2 = 0.5 * threshold_i1;
-        peak_f = highpass[current];
+        peak_f = signal[current];
         npk_f = 0.125 * peak_f + 0.875 * npk_f;
         threshold_f1 = npk_f + 0.25 * (spk_f - npk_f);
         threshold_f2 = 0.5 * threshold_f1;
@@ -393,7 +307,7 @@ void panTompkins()
       // (check the slope).
       if ((sample - lastQRS > rrmiss) && (sample > lastQRS + FS / 5)) {
         for (i = current - (sample - lastQRS) + FS / 5; i < current; i++) {
-          if ((integral[i] > threshold_i2) && (highpass[i] > threshold_f2)) {
+          if ((integral[i] > threshold_i2) && (signal[i] > threshold_f2)) {
             currentSlope = 0;
             for (j = i - 10; j <= i; j++) {
               if (squared[j] > currentSlope) {
@@ -405,7 +319,7 @@ void panTompkins()
               qrs = false;
             } else {
               peak_i = integral[i];
-              peak_f = highpass[i];
+              peak_f = signal[i];
               spk_i = 0.25 * peak_i + 0.75 * spk_i;
               spk_f = 0.25 * peak_f + 0.75 * spk_f;
               threshold_i1 = npk_i + 0.25 * (spk_i - npk_i);
@@ -473,12 +387,12 @@ void panTompkins()
       if (!qrs) {
         // If some kind of peak had been detected, then it's certainly a noise
         // peak. Thresholds must be updated accordinly.
-        if ((integral[current] >= threshold_i1) || (highpass[current] >= threshold_f1)) {
+        if ((integral[current] >= threshold_i1) || (signal[current] >= threshold_f1)) {
           peak_i = integral[current];
           npk_i = 0.125 * peak_i + 0.875 * npk_i;
           threshold_i1 = npk_i + 0.25 * (spk_i - npk_i);
           threshold_i2 = 0.5 * threshold_i1;
-          peak_f = highpass[current];
+          peak_f = signal[current];
           npk_f = 0.125 * peak_f + 0.875 * npk_f;
           threshold_f1 = npk_f + 0.25 * (spk_f - npk_f);
           threshold_f2 = 0.5 * threshold_f1;
@@ -498,7 +412,9 @@ void panTompkins()
     if (sample > DELAY + BUFFSIZE) {
       output(outputSignal[0]);
     }
-  } while (signal[current] != NOSAMPLE);
+
+    read_result = fread(input_buffer, sizeof(short), 1, fin);
+  }
 
   // Output the last remaining samples on the buffer
   for (i = 1; i < BUFFSIZE; i++) {
