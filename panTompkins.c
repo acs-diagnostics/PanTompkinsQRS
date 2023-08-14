@@ -1,20 +1,20 @@
+#define FS 250 // Sampling frequency.
+
 #define WINDOWSIZE \
-  20 // Integrator window size, in samples. The article recommends 150ms. So,
-     // FS*0.15.
-     // However, you should check empirically if the waveform looks ok.
+  (FS * 0.15) // Integrator window size, in samples. The article recommends
+              // 150ms. So, FS*0.15. However, you should check empirically if
+              // the waveform looks ok.
 
 #define NOSAMPLE \
   -32000 // An indicator that there are no more samples to read. Use an
          // impossible value for a sample.
-
-#define FS 250 // Sampling frequency.
 
 #define BUFFSIZE \
   512 // The size of the buffers (in samples). Must fit more than 1.66 times an
       // RR interval, which typically could be around 1 second.
 
 #define DELAY \
-  22 // Delay introduced by the filters. Filter only output samples after this
+  0 // Delay introduced by the filters. Filter only output samples after this
      // one.
 // Set to 0 if you want to keep the delay. Fixing the delay results in DELAY
 // less samples in the final end result.
@@ -180,50 +180,52 @@ void panTompkins()
     }
     sample++; // Update sample counter
 
-    // DC Block filter
-    // This was not proposed on the original paper.
-    // It is not necessary and can be removed if your sensor or database has no
-    // DC noise.
-    if (current >= 1) {
-      dcblock[current] = signal[current] - signal[current - 1] + 0.995 * dcblock[current - 1];
-    } else {
-      dcblock[current] = 0;
-    }
+    // // DC Block filter
+    // // This was not proposed on the original paper.
+    // // It is not necessary and can be removed if your sensor or database has no
+    // // DC noise.
+    // if (current >= 1) {
+    //   dcblock[current] = signal[current] - signal[current - 1] + 0.995 * dcblock[current - 1];
+    // } else {
+    //   dcblock[current] = 0;
+    // }
 
-    // Low Pass filter
-    // Implemented as proposed by the original paper.
-    // y(nT) = 2y(nT - T) - y(nT - 2T) + x(nT) - 2x(nT - 6T) + x(nT - 12T)
-    // Can be removed if your signal was previously filtered, or replaced by a
-    // different filter.
-    lowpass[current] = dcblock[current];
-    if (current >= 1) {
-      lowpass[current] += 2 * lowpass[current - 1];
-    }
-    if (current >= 2) {
-      lowpass[current] -= lowpass[current - 2];
-    }
-    if (current >= 6) {
-      lowpass[current] -= 2 * dcblock[current - 6];
-    }
-    if (current >= 12) {
-      lowpass[current] += dcblock[current - 12];
-    }
+    // // Low Pass filter
+    // // Implemented as proposed by the original paper.
+    // // y(nT) = 2y(nT - T) - y(nT - 2T) + x(nT) - 2x(nT - 6T) + x(nT - 12T)
+    // // Can be removed if your signal was previously filtered, or replaced by a
+    // // different filter.
+    // lowpass[current] = dcblock[current];
+    // if (current >= 1) {
+    //   lowpass[current] += 2 * lowpass[current - 1];
+    // }
+    // if (current >= 2) {
+    //   lowpass[current] -= lowpass[current - 2];
+    // }
+    // if (current >= 6) {
+    //   lowpass[current] -= 2 * dcblock[current - 6];
+    // }
+    // if (current >= 12) {
+    //   lowpass[current] += dcblock[current - 12];
+    // }
 
-    // High Pass filter
-    // Implemented as proposed by the original paper.
-    // y(nT) = 32x(nT - 16T) - [y(nT - T) + x(nT) - x(nT - 32T)]
-    // Can be removed if your signal was previously filtered, or replaced by a
-    // different filter.
-    highpass[current] = -lowpass[current];
-    if (current >= 1) {
-      highpass[current] -= highpass[current - 1];
-    }
-    if (current >= 16) {
-      highpass[current] += 32 * lowpass[current - 16];
-    }
-    if (current >= 32) {
-      highpass[current] += lowpass[current - 32];
-    }
+    // // High Pass filter
+    // // Implemented as proposed by the original paper.
+    // // y(nT) = 32x(nT - 16T) - [y(nT - T) + x(nT) - x(nT - 32T)]
+    // // Can be removed if your signal was previously filtered, or replaced by a
+    // // different filter.
+    // highpass[current] = -lowpass[current];
+    // if (current >= 1) {
+    //   highpass[current] -= highpass[current - 1];
+    // }
+    // if (current >= 16) {
+    //   highpass[current] += 32 * lowpass[current - 16];
+    // }
+    // if (current >= 32) {
+    //   highpass[current] += lowpass[current - 32];
+    // }
+
+    highpass[current] = signal[current];
 
     // Derivative filter
     // This is an alternative implementation, the central difference method.
@@ -284,9 +286,7 @@ void panTompkins()
 
           if (currentSlope <= (dataType)(lastSlope / 2)) {
             qrs = false;
-          }
-
-          else {
+          } else {
             spk_i = 0.125 * peak_i + 0.875 * spk_i;
             threshold_i1 = npk_i + 0.25 * (spk_i - npk_i);
             threshold_i2 = 0.5 * threshold_i1;
