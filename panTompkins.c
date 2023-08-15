@@ -306,7 +306,7 @@ void panTompkins()
       // However, the back search must respect the 200ms limit and the 360ms one
       // (check the slope).
       if ((sample - lastQRS > rrmiss) && (sample > lastQRS + FS / 5)) {
-        for (i = current - (sample - lastQRS) + FS / 5; i < current; i++) {
+        for (i = current - (sample - lastQRS) + FS / 5; i < current && i >= 0 && i < BUFFSIZE; i++) {
           if ((integral[i] > threshold_i2) && (signal[i] > threshold_f2)) {
             currentSlope = 0;
             for (j = i - 10; j <= i; j++) {
